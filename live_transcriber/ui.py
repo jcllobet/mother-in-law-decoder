@@ -23,16 +23,104 @@ from .transcription import Transcriber
 LIVE_VIEW_LINES = 24
 SCROLL_PAGE_SIZE = 20
 
-# Speaker colors (cycle through for different speakers)
-SPEAKER_COLORS = [
-    "bright_green",
-    "bright_cyan",
-    "bright_magenta", 
-    "bright_yellow",
-    "bright_blue",
-    "bright_red",
-    "green",
-    "cyan",
+# Christmas colors (matching language_selector.py)
+CHRISTMAS_GREEN = "#165b33"
+CHRISTMAS_GOLD = "#d4af37"
+CHRISTMAS_RED = "#c41e3a"
+
+# Language colors organized by linguistic family/region
+# English is always white; similar languages share similar color tones
+LANGUAGE_COLORS = {
+    # === ENGLISH (always white) ===
+    "en": "white",
+
+    # === GERMANIC (cool blues/silver - winter/ice theme) ===
+    "de": "#87ceeb",         # German - sky blue
+    "nl": "#add8e6",         # Dutch - light blue
+    "da": "#b0c4de",         # Danish - light steel blue
+    "no": "#87cefa",         # Norwegian - light sky blue
+    "sv": "#a0c4e8",         # Swedish - soft blue
+
+    # === ROMANCE (warm golds/amber - warmth theme) ===
+    "es": "#d4af37",         # Spanish - antique gold
+    "fr": "#daa520",         # French - goldenrod
+    "it": "#f0c05a",         # Italian - soft gold
+    "pt": "#e6be5a",         # Portuguese - muted gold
+    "ro": "#cda434",         # Romanian - darker gold
+    "ca": "#d4a84b",         # Catalan - amber gold
+    "gl": "#c9a227",         # Galician - old gold
+
+    # === SLAVIC (purple/violet tones) ===
+    "ru": "#dda0dd",         # Russian - plum
+    "pl": "#d8bfd8",         # Polish - thistle
+    "cs": "#e6a8d7",         # Czech - orchid pink
+    "sk": "#dbb2d1",         # Slovak - light plum
+    "uk": "#da70d6",         # Ukrainian - orchid
+    "bg": "#d291bc",         # Bulgarian - pastel violet
+    "sr": "#c9a0dc",         # Serbian - wisteria
+    "hr": "#d7a9e3",         # Croatian - light orchid
+    "bs": "#cba4d4",         # Bosnian - soft violet
+    "sl": "#d3a4d9",         # Slovenian - lavender pink
+    "mk": "#d8a1d4",         # Macedonian - mauve
+
+    # === BALTIC & FINNO-UGRIC (teal/aqua - Baltic sea) ===
+    "lt": "#40e0d0",         # Lithuanian - turquoise
+    "lv": "#48d1cc",         # Latvian - medium turquoise
+    "et": "#00ced1",         # Estonian - dark turquoise
+    "fi": "#5f9ea0",         # Finnish - cadet blue
+    "hu": "#20b2aa",         # Hungarian - light sea green
+
+    # === GREEK & BASQUE (unique colors) ===
+    "el": "#9acd32",         # Greek - yellow green (olive)
+    "eu": "#cd853f",         # Basque - peru (unique)
+
+    # === MIDDLE EASTERN & TURKIC (copper/bronze tones) ===
+    "ar": "#cd7f32",         # Arabic - bronze
+    "he": "#b87333",         # Hebrew - copper
+    "fa": "#cc7722",         # Persian - ochre
+    "tr": "#d2691e",         # Turkish - chocolate
+    "ur": "#c2772e",         # Urdu - copper brown
+
+    # === SOUTH ASIAN (coral/salmon - vibrant warm) ===
+    "hi": "#ff7f50",         # Hindi - coral
+    "gu": "#fa8072",         # Gujarati - salmon
+    "mr": "#f08080",         # Marathi - light coral
+    "pa": "#e9967a",         # Punjabi - dark salmon
+    "ta": "#ffa07a",         # Tamil - light salmon
+    "te": "#ff8c69",         # Telugu - salmon orange
+    "ml": "#ff6f61",         # Malayalam - living coral
+
+    # === EAST ASIAN (red tones - festive/lucky) ===
+    "zh": "#c41e3a",         # Chinese - cardinal red
+    "ja": "#dc143c",         # Japanese - crimson
+    "ko": "#b22234",         # Korean - deep red
+
+    # === SOUTHEAST ASIAN (green tones - tropical) ===
+    "vi": "#90ee90",         # Vietnamese - light green
+    "th": "#98fb98",         # Thai - pale green
+    "id": "#8fbc8f",         # Indonesian - dark sea green
+    "ms": "#66cdaa",         # Malay - medium aquamarine
+    "tl": "#7cfc00",         # Tagalog - lawn green
+}
+DEFAULT_LANGUAGE_COLOR = "#d4af37"  # Gold fallback
+
+# Speaker emoji + color pairs for differentiation (high contrast colors)
+# Each speaker gets a unique emoji AND color for easy identification
+SPEAKER_STYLES = [
+    ("🎄", "#98fb98"),  # Christmas tree - pale green
+    ("🎅", "#ff6b6b"),  # Santa - coral red
+    ("✨", "#ffd700"),  # Star - gold
+    ("🎁", "#ff69b4"),  # Gift box - hot pink
+    ("🔔", "#ffb347"),  # Bell - pastel orange
+    ("🕯️", "#dda0dd"),  # Candle - plum
+    ("🧦", "#87ceeb"),  # Stocking - sky blue
+    ("🍪", "#deb887"),  # Cookie - burlywood
+    ("☃️", "#e0ffff"),  # Snowman - light cyan
+    ("❄️", "#b0e0e6"),  # Snowflake - powder blue
+    ("🦌", "#cd853f"),  # Reindeer - peru
+    ("👵", "#f0e68c"),  # Grandma - khaki
+    ("🎀", "#ffb6c1"),  # Ribbon - light pink
+    ("🧣", "#20b2aa"),  # Scarf - light sea green
 ]
 
 # Language flags are now handled by the languages module
@@ -201,66 +289,122 @@ class NegotiationUI:  # TODO: Rename to FamilyChatUI in future refactor
         self._status_message = "Listening..."
     
     def _render_transcript_plain(self) -> str:
-        """Render transcript as plain text."""
+        """Render transcript as plain text with parenthetical translations."""
         parts: list[str] = []
         current_speaker: Optional[int] = None
-        current_language: Optional[str] = None
-        current_is_translation: bool = False
-        
+
+        # Buffers for accumulating original + translation pairs
+        original_buffer = ""
+        translation_buffer = ""
+
         for token in self.session.final_tokens:
             text = token.get("text", "")
             speaker = token.get("speaker")
-            language = token.get("language")
             is_translation = token.get("translation_status") == "translation"
             source_lang = token.get("source_language")
-            
-            if is_translation and source_lang == "en":
+
+            # Skip translations when source language equals target language
+            if is_translation and source_lang == self.session.target_language:
                 continue
-            
+
+            # Speaker changed - flush buffers, start new paragraph
             if speaker is not None and speaker != current_speaker:
+                # Flush pending content
+                if original_buffer:
+                    parts.append(original_buffer)
+                    if translation_buffer:
+                        parts.append(f" ({translation_buffer.strip()})")
+                original_buffer = ""
+                translation_buffer = ""
+
                 if current_speaker is not None:
                     parts.append("\n\n")
                 current_speaker = speaker
-                current_language = None
-                current_is_translation = False
+
+                # Speaker header with emoji
+                emoji, _ = self._get_speaker_style(speaker)
                 profile = self.session.get_speaker_profile(speaker)
-                parts.append(f"{profile.get_label()}:")
-            
-            lang_changed = language is not None and language != current_language
-            translation_changed = is_translation != current_is_translation
-            
-            if lang_changed or translation_changed:
-                current_language = language
-                current_is_translation = is_translation
-                if is_translation:
-                    parts.append(f"\n  ↳ [{language}] ")
-                else:
-                    parts.append(f"\n[{language}] ")
+                parts.append(f"{emoji} {profile.get_label()}: ")
                 text = text.lstrip()
-            
-            parts.append(text)
-        
+
+            # Accumulate text
+            if is_translation:
+                translation_buffer += text
+            else:
+                # If we have pending translation, flush first
+                if translation_buffer:
+                    parts.append(original_buffer)
+                    parts.append(f" ({translation_buffer.strip()})")
+                    original_buffer = ""
+                    translation_buffer = ""
+                original_buffer += text
+
+        # Final flush
+        if original_buffer:
+            parts.append(original_buffer)
+            if translation_buffer:
+                parts.append(f" ({translation_buffer.strip()})")
+
         return "".join(parts)
     
-    def _get_speaker_color(self, speaker_id: int | str) -> str:
-        """Get a unique color for a speaker."""
+    def _get_speaker_style(self, speaker_id: int | str) -> tuple[str, str]:
+        """Get a unique emoji + color pair for a speaker."""
         sid = int(speaker_id) if isinstance(speaker_id, str) else speaker_id
-        return SPEAKER_COLORS[sid % len(SPEAKER_COLORS)]
-    
+        return SPEAKER_STYLES[sid % len(SPEAKER_STYLES)]
+
+    def _get_language_color(self, language: str) -> str:
+        """Get color for a language (English = white, regional families share tones)."""
+        return LANGUAGE_COLORS.get(language, DEFAULT_LANGUAGE_COLOR)
+
     def _get_language_flag(self, language: str) -> str:
         """Get flag emoji for a language."""
         from .languages import get_language_flag
         return get_language_flag(language)
-    
+
+    def _flush_buffers(
+        self,
+        text: Text,
+        original: str,
+        translation: str,
+        lang: str,
+        is_final: bool = True
+    ) -> None:
+        """Flush accumulated original + translation to text with parenthetical format."""
+        if not original and not translation:
+            return
+
+        lang_color = self._get_language_color(lang) if lang else DEFAULT_LANGUAGE_COLOR
+
+        # Apply styling based on finality
+        if is_final:
+            if original:
+                text.append(original, style=lang_color)
+            if translation:
+                text.append(" (", style="dim")
+                text.append(translation.strip(), style="white")
+                text.append(")", style="dim")
+        else:
+            # Non-final (in-progress) text is dim and italic
+            if original:
+                text.append(original, style=f"dim italic {lang_color}")
+            if translation:
+                text.append(" (", style="dim")
+                text.append(translation.strip(), style="dim italic white")
+                text.append(")", style="dim")
+
     def _render_transcript(self) -> Text:
-        """Render transcript as Rich Text - flowing paragraphs."""
+        """Render transcript with inline parenthetical translations and language colors."""
         text = Text()
         current_speaker: Optional[int | str] = None
-        current_is_translation: bool = False
-        current_speaker_color: str = "white"
-        
+
+        # Buffers for accumulating original + translation pairs
+        original_buffer = ""
+        translation_buffer = ""
+        current_lang: Optional[str] = None
+        buffer_is_final = True
+
         all_tokens = self.session.final_tokens + self._non_final_tokens
-        
+
         for token in all_tokens:
             token_text = token.get("text", "")
             speaker = token.get("speaker")
@@ -268,52 +412,50 @@ class NegotiationUI:  # TODO: Rename to FamilyChatUI in future refactor
             is_translation = token.get("translation_status") == "translation"
             is_final = token.get("is_final", True)
             source_lang = token.get("source_language")
-            
-            if is_translation and source_lang == "en":
+
+            # Skip translations when source language equals target language
+            if is_translation and source_lang == self.session.target_language:
                 continue
-            
-            # Speaker changed - new paragraph
+
+            # Speaker changed - flush buffers, start new paragraph
             if speaker is not None and speaker != current_speaker:
+                # Flush any pending content
+                self._flush_buffers(text, original_buffer, translation_buffer, current_lang, buffer_is_final)
+                original_buffer = ""
+                translation_buffer = ""
+                buffer_is_final = True
+
                 if current_speaker is not None:
                     text.append("\n\n")
                 current_speaker = speaker
-                current_is_translation = False
+
+                # Speaker header with emoji and unique color
+                emoji, speaker_color = self._get_speaker_style(speaker)
                 profile = self.session.get_speaker_profile(speaker)
-                
-                # Use unique color per speaker
-                current_speaker_color = self._get_speaker_color(speaker)
-                flag = self._get_language_flag(language) if language else ""
-                label = profile.get_label(
-                    self.session.source_languages,
-                    self.session.target_language
-                )
-                text.append(f"{label}: {flag} ", style=f"bold {current_speaker_color}")
+                label = profile.get_label()
+                text.append(f"{emoji} {label}: ", style=f"bold {speaker_color}")
+                current_lang = language
                 token_text = token_text.lstrip()
-            
-            # Translation line - indent on new line
-            if is_translation and not current_is_translation:
-                current_is_translation = True
-                flag = self._get_language_flag(language) if language else ""
-                text.append(f"\n  ↳ {flag} ", style=f"dim {current_speaker_color}")
-                token_text = token_text.lstrip()
-            elif not is_translation and current_is_translation:
-                # Switching back from translation to original
-                current_is_translation = False
-                flag = self._get_language_flag(language) if language else ""
-                text.append(f"\n{flag} ", style=current_speaker_color)
-                token_text = token_text.lstrip()
-            
-            # Color text: pink for original, white for translation
+
+            # Track if buffer contains non-final content
             if not is_final:
-                if is_translation:
-                    text.append(token_text, style="dim italic white")
-                else:
-                    text.append(token_text, style="dim italic magenta")
-            elif is_translation:
-                text.append(token_text, style="white")
+                buffer_is_final = False
+
+            # Accumulate text
+            if is_translation:
+                translation_buffer += token_text
             else:
-                text.append(token_text, style="magenta")
-        
+                # If we have pending translation, flush first (phrase complete)
+                if translation_buffer:
+                    self._flush_buffers(text, original_buffer, translation_buffer, current_lang, buffer_is_final)
+                    original_buffer = ""
+                    translation_buffer = ""
+                    buffer_is_final = is_final
+                original_buffer += token_text
+                current_lang = language
+
+        # Final flush
+        self._flush_buffers(text, original_buffer, translation_buffer, current_lang, buffer_is_final)
         return text
     
     def _render_live_transcript(self) -> Text:
@@ -321,94 +463,94 @@ class NegotiationUI:  # TODO: Rename to FamilyChatUI in future refactor
         full = self._render_transcript()
         if not full:
             return Text("Waiting for speech...", style="dim italic")
-        
+
         lines = str(full).split("\n")
         if len(lines) <= LIVE_VIEW_LINES:
             return full
-        
+
         visible = lines[-LIVE_VIEW_LINES:]
         result = Text()
-        result.append(f"↑ {len(lines) - LIVE_VIEW_LINES} more (v=scroll) ", style="dim magenta")
+        result.append(f"↑ {len(lines) - LIVE_VIEW_LINES} more (v=scroll) ", style=f"dim {CHRISTMAS_GREEN}")
         result.append("\n".join(visible))
         return result
     
     def _render_status_bar(self) -> Text:
-        """Render status bar."""
+        """Render status bar with Christmas theme."""
         text = Text()
-        
+
         if self._scroll_mode:
-            text.append(" SCROLL ", style="black on magenta")
+            text.append(" SCROLL ", style=f"black on {CHRISTMAS_RED}")
             start = self._scroll_offset + 1
             end = min(self._scroll_offset + SCROLL_PAGE_SIZE, self._scroll_total_lines)
-            text.append(f" {start}-{end}/{self._scroll_total_lines}", style="magenta")
+            text.append(f" {start}-{end}/{self._scroll_total_lines}", style=CHRISTMAS_RED)
         else:
-            text.append(" LIVE ", style="black on green")
-        
+            text.append(" LIVE ", style=f"black on {CHRISTMAS_GREEN}")
+
         text.append(f" │ {self.session.name}", style="bold")
         text.append(f" │ {len(self.session.final_tokens)} tokens", style="dim")
 
         # Show language configuration
         source_langs = ",".join(self.session.source_languages)
         text.append(f" │ Langs: {source_langs} → {self.session.target_language}", style="dim")
-        
+
         if self._error_message:
-            text.append(f" │ {self._error_message}", style="red")
+            text.append(f" │ {self._error_message}", style=CHRISTMAS_RED)
             self._error_message = ""
         elif self._status_message:
             text.append(f" │ {self._status_message}", style="dim")
-        
+
         return text
     
     def _render_hotkey_bar(self) -> Text:
-        """Render hotkey hints."""
+        """Render hotkey hints with Christmas theme."""
         text = Text()
         if self._scroll_mode:
             for k, d in [("j↓k↑", "scroll"), ("du", "page"), ("gG", "ends"), ("q", "exit")]:
-                text.append(f" {k}", style="cyan")
+                text.append(f" {k}", style=CHRISTMAS_GOLD)
                 text.append(f"={d}", style="dim")
         else:
             for k, d in [("v", "scroll"), ("q", "quit")]:
-                text.append(f" {k}", style="cyan")
+                text.append(f" {k}", style=CHRISTMAS_GOLD)
                 text.append(f"={d}", style="dim")
         return text
     
     def _build_scroll_display(self) -> Group:
-        """Build scroll display."""
-        header = Text("🎙 SCROLL MODE ", style="bold magenta")
+        """Build scroll display with Christmas theme."""
+        header = Text("🎙 SCROLL MODE ", style=f"bold {CHRISTMAS_RED}")
         header.append("(j/k=scroll, q=exit)", style="dim")
-        
+
         visible = self._scroll_lines[self._scroll_offset:self._scroll_offset + SCROLL_PAGE_SIZE]
         content = "\n".join(visible) if visible else "No content"
-        
+
         return Group(
-            Panel(header, style="magenta"),
-            Panel(Text(content), border_style="magenta"),
+            Panel(header, style=CHRISTMAS_RED),
+            Panel(Text(content), border_style=CHRISTMAS_RED),
             self._render_status_bar(),
             self._render_hotkey_bar(),
         )
     
     def _build_display(self) -> Group:
-        """Build main display."""
+        """Build main display with Christmas theme."""
         if self._scroll_mode:
             return self._build_scroll_display()
-        
+
         parts = []
 
         # Header
-        header = Text("🎙 Live Translator", style="bold")
-        parts.append(Panel(header, style="blue"))
+        header = Text("🎄 Live Translator", style=f"bold {CHRISTMAS_GREEN}")
+        parts.append(Panel(header, style=CHRISTMAS_GREEN))
 
         # Main transcript panel
         parts.append(Panel(
             self._render_live_transcript(),
-            title="[bold]Live Transcript[/]",
-            border_style="blue",
+            title=f"[bold {CHRISTMAS_GREEN}]Live Transcript[/]",
+            border_style=CHRISTMAS_GREEN,
         ))
 
         # Status and hotkeys
         parts.append(self._render_status_bar())
         parts.append(self._render_hotkey_bar())
-        
+
         return Group(*parts)
     
     def run(self) -> None:
@@ -422,20 +564,20 @@ class NegotiationUI:  # TODO: Rename to FamilyChatUI in future refactor
         
         # Initial display
         self.console.clear()
-        self.console.print("[bold blue]🎙 Live Translator[/]")
+        self.console.print(f"[bold {CHRISTMAS_GREEN}]🎄 Live Translator[/]")
 
         if self.session.was_resumed:
             info = self.session.get_resume_info()
             if info:
-                self.console.print(f"[yellow]📂 Resuming ({info['token_count']} tokens)[/]")
+                self.console.print(f"[{CHRISTMAS_GOLD}]🎁 Resuming ({info['token_count']} tokens)[/]")
 
         self.console.print("[dim]Connecting...[/]")
         if not self.transcriber.start():
-            self.console.print("[red]Failed to start[/]")
+            self.console.print(f"[{CHRISTMAS_RED}]Failed to start[/]")
             return
 
-        self.console.print(f"[green]✓[/] {self.transcriber.device_name}")
-        self.console.print("[dim]Keys: v=scroll q=quit[/]")
+        self.console.print(f"[{CHRISTMAS_GREEN}]✓[/] {self.transcriber.device_name}")
+        self.console.print(f"[dim]Keys: [{CHRISTMAS_GOLD}]v[/]=scroll [{CHRISTMAS_GOLD}]q[/]=quit[/]")
         self.console.print()
         
         self._start_keyboard_listener()
@@ -468,6 +610,6 @@ class NegotiationUI:  # TODO: Rename to FamilyChatUI in future refactor
             
             self.console.print()
             if self.session.final_tokens:
-                self.console.print("[yellow]Saving...[/]")
+                self.console.print(f"[{CHRISTMAS_GOLD}]Saving...[/]")
                 path = self.session.save_segment()
-                self.console.print(f"[green]✓[/] {path}")
+                self.console.print(f"[{CHRISTMAS_GREEN}]✓[/] {path}")

@@ -41,84 +41,89 @@ class SpeakerProfile:
             return None
         return max(self.language_counts, key=self.language_counts.get)
     
-    def get_speaker_type(
-        self,
-        source_languages: list[str],
-        target_language: str,
-    ) -> Optional[str]:
-        """Classify speaker after enough samples."""
-        if self.total_samples < MIN_SAMPLES_FOR_LABELING:
-            return None
+    # def get_speaker_type(
+    #     self,
+    #     source_languages: list[str],
+    #     target_language: str,
+    # ) -> Optional[str]:
+    #     """Classify speaker after enough samples."""
+    #     if self.total_samples < MIN_SAMPLES_FOR_LABELING:
+    #         return None
 
-        from .languages import get_language_name
+    #     from .languages import get_language_name
 
-        target_count = self.language_counts.get(target_language, 0)
-        source_counts = sum(
-            self.language_counts.get(lang, 0)
-            for lang in source_languages
-        )
-        total = target_count + source_counts
+    #     target_count = self.language_counts.get(target_language, 0)
+    #     source_counts = sum(
+    #         self.language_counts.get(lang, 0)
+    #         for lang in source_languages
+    #     )
+    #     total = target_count + source_counts
 
-        if total == 0:
-            return None
+    #     if total == 0:
+    #         return None
 
-        target_ratio = target_count / total
+    #     target_ratio = target_count / total
 
-        # More than 80% target language = monolingual target speaker
-        if target_ratio >= 0.8:
-            return get_language_name(target_language)
-        # Less than 20% target language = monolingual source speaker
-        elif target_ratio <= 0.2:
-            # Find dominant source language
-            dominant = max(
-                source_languages,
-                key=lambda lang: self.language_counts.get(lang, 0)
-            )
-            return get_language_name(dominant)
-        else:
-            return "Multilingual"
+    #     # More than 80% target language = monolingual target speaker
+    #     if target_ratio >= 0.8:
+    #         return get_language_name(target_language)
+    #     # Less than 20% target language = monolingual source speaker
+    #     elif target_ratio <= 0.2:
+    #         # Find dominant source language
+    #         dominant = max(
+    #             source_languages,
+    #             key=lambda lang: self.language_counts.get(lang, 0)
+    #         )
+    #         return get_language_name(dominant)
+    #     else:
+    #         return "Multilingual"
     
     def get_label(
         self,
-        source_languages: list[str],
-        target_language: str,
+        source_languages: list[str] | None = None,
+        target_language: str | None = None,
     ) -> str:
-        """Get display label for speaker with language flags."""
-        from .languages import get_language_flag
+        """Get display label for speaker (simplified to just 'Speaker X')."""
+        # Language info is now shown inline with the text, so just use simple label
+        return f"Speaker {self.speaker_id}"
 
-        # Get top 3 languages this speaker has used
-        languages_used = sorted(
-            self.language_counts.items(),
-            key=lambda x: x[1],
-            reverse=True
-        )
-
-        lang_flags = ""
-        if languages_used:
-            # Show top 3 language flags
-            top_langs = [code for code, count in languages_used[:3] if count > 0]
-            lang_flags = " " + " ".join(get_language_flag(code) for code in top_langs)
-
-        speaker_type = self.get_speaker_type(source_languages, target_language)
-        if speaker_type:
-            return f"{speaker_type} Speaker {self.speaker_id}{lang_flags}"
-        return f"Speaker {self.speaker_id}{lang_flags}"
+        # --- Commented out for potential future use ---
+        # from .languages import get_language_flag
+        #
+        # # Get top 3 languages this speaker has used
+        # languages_used = sorted(
+        #     self.language_counts.items(),
+        #     key=lambda x: x[1],
+        #     reverse=True
+        # )
+        #
+        # lang_flags = ""
+        # if languages_used:
+        #     # Show top 3 language flags
+        #     top_langs = [code for code, count in languages_used[:3] if count > 0]
+        #     lang_flags = " " + " ".join(get_language_flag(code) for code in top_langs)
+        #
+        # speaker_type = self.get_speaker_type(source_languages, target_language)
+        # if speaker_type:
+        #     return f"{speaker_type} Speaker {self.speaker_id}{lang_flags}"
+        # return f"Speaker {self.speaker_id}{lang_flags}"
     
-    def is_source_language_speaker(
-        self,
-        source_languages: list[str],
-        target_language: str,
-    ) -> bool:
-        """Check if speaker primarily uses source languages (not target)."""
-        from .languages import get_language_name
-
-        speaker_type = self.get_speaker_type(source_languages, target_language)
-        if speaker_type is None:
-            return False
-
-        target_name = get_language_name(target_language)
-        # Speaker is a source language speaker if they're not primarily the target language
-        return speaker_type != target_name
+    # --- Commented out for potential future use ---
+    # def is_source_language_speaker(
+    #     self,
+    #     source_languages: list[str],
+    #     target_language: str,
+    # ) -> bool:
+    #     """Check if speaker primarily uses source languages (not target)."""
+    #     from .languages import get_language_name
+    #
+    #     speaker_type = self.get_speaker_type(source_languages, target_language)
+    #     if speaker_type is None:
+    #         return False
+    #
+    #     target_name = get_language_name(target_language)
+    #     # Speaker is a source language speaker if they're not primarily the target language
+    #     return speaker_type != target_name
     
     def to_dict(self) -> dict:
         """Serialize to dictionary."""
@@ -267,14 +272,7 @@ class Session:
                 "tokens": self.final_tokens,
                 "speaker_profiles": {
                     sid: {
-                        "type": profile.get_speaker_type(
-                            self.source_languages,
-                            self.target_language
-                        ),
-                        "label": profile.get_label(
-                            self.source_languages,
-                            self.target_language
-                        ),
+                        "label": profile.get_label(),
                         "language_counts": dict(profile.language_counts),
                     }
                     for sid, profile in self.speaker_profiles.items()
@@ -336,9 +334,9 @@ class Session:
             language = token.get("language")
             is_translation = token.get("translation_status") == "translation"
             
-            # Skip translations of English (we only want Chinese translations)
+            # Skip translations when source language equals target language
             source_lang = token.get("source_language")
-            if is_translation and source_lang == "en":
+            if is_translation and source_lang == self.target_language:
                 continue
             
             if speaker is not None and speaker != current_speaker:
@@ -348,7 +346,7 @@ class Session:
                 current_language = None
                 current_is_translation = False
                 profile = self.get_speaker_profile(speaker)
-                text_parts.append(f"{profile.get_label(self.source_languages, self.target_language)}:")
+                text_parts.append(f"{profile.get_label()}:")
             
             # Language or translation status changed
             lang_changed = language is not None and language != current_language
