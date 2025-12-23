@@ -9,6 +9,8 @@ old/
 # Soniox cache
 .soniox_cache/
 
+.vscode/
+
 # Python
 venv/
 env/
