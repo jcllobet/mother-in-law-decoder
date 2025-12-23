@@ -14,7 +14,7 @@ try:
 except ImportError:
     pass
 
-from family_chat import (
+from live_transcriber import (
     Session,
     Transcriber,
     NegotiationUI,

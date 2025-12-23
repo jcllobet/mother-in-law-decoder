@@ -1,6 +1,5 @@
 # Transcripts
-live-conversations/
-async_transcripts/
+output/
 
 # Audio files
 *.mp3
