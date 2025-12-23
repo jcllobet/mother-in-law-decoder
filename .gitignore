@@ -1,8 +1,6 @@
 # Transcripts
 live-conversations/
 async_transcripts/
-old/
-recordings/
 
 # Audio files
 *.mp3
@@ -20,3 +18,5 @@ family_chat/__pycache__/
 
 # OS
 .DS_Store
+
+.claude/

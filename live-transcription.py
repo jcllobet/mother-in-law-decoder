@@ -1,11 +1,7 @@
 #!/usr/bin/env python3
 """
 Live Translator
-Real-time multilingual transcription and translation.
-
-Modes:
-  - Full: Interactive UI with scroll mode
-  - Minimal: Simple continuous output
+Real-time multilingual transcription and translation with interactive scroll mode.
 """
 
 import argparse
@@ -24,13 +20,9 @@ from family_chat import (
     NegotiationUI,
     list_audio_devices,
 )
-from family_chat.simple_ui import run_simple_transcription
 
-# Default context for family conversations
+# Default context for transcription
 DEFAULT_CONTEXT = """This is a casual family conversation between people who speak different languages. The conversation may include family matters, daily life topics, stories, jokes, and personal anecdotes. Pay attention to conversational nuances, cultural references, and emotional tone."""
-
-# Simple context for general transcription
-SIMPLE_CONTEXT = """Casual multilingual family conversation. Transcribe accurately with speaker identification."""
 
 
 def main():
@@ -38,11 +30,7 @@ def main():
         description="Live transcription and translation",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Modes:
-  Default:   Full interactive UI with scroll mode
-  --minimal: Simple continuous output (great for demos!)
-
-Keyboard shortcuts (full mode):
+Keyboard shortcuts:
   v - Enter scroll mode to view full transcript
   q - Save and quit
 
@@ -63,11 +51,6 @@ Scroll mode navigation:
         type=str,
         default=None,
         help="Context hint for better transcription accuracy"
-    )
-    parser.add_argument(
-        "--minimal", "-m",
-        action="store_true",
-        help="Simple transcription mode - continuous output (great for demos)"
     )
     parser.add_argument(
         "--device", "-d",
@@ -113,25 +96,15 @@ Scroll mode navigation:
     
     # Type narrowing for linter
     assert soniox_key is not None
-    
-    # Set context based on mode
-    context: str = args.context if args.context else (SIMPLE_CONTEXT if args.minimal else DEFAULT_CONTEXT)
-    
+
+    # Set context
+    context: str = args.context if args.context else DEFAULT_CONTEXT
+
     # Initialize base components
     base_dir = os.path.dirname(os.path.abspath(__file__))
     session = Session(args.session, base_dir)
-    
-    # Minimal mode - simple transcription only
-    if args.minimal:
-        run_simple_transcription(
-            api_key=soniox_key,
-            session=session,
-            context=context,
-            device_index=args.device,
-        )
-        return
 
-    # Full mode - interactive UI with scroll
+    # Initialize transcriber and UI
     transcriber = Transcriber(
         api_key=soniox_key,
         session=session,

@@ -25,39 +25,29 @@ pip install -r requirements.txt
 # Setup API key (get it from Soniox)
 echo "SONIOX_API_KEY=your_key_here" > .env
 
-# Run it (simple mode - continuous output)
-python live-transcription.py --session "dinner-with-in-laws" --minimal
-
-# Or run it with interactive UI and scroll mode
-python live-transcription.py --session "sunday-lunch"
+# Run it
+python live-transcription.py --session "dinner-with-in-laws"
 ```
 
 ## Features
 
-### 🎯 Simple Mode (`--minimal`)
-Perfect for just following along:
 - Real-time transcription with speaker identification
 - Live translation to English (or your language of choice)
 - Color-coded speakers so you know who's saying what
-- Continuous output that scrolls in your terminal
+- Interactive scroll mode to view conversation history
 - Save transcripts for later (or for evidence)
 
-### 🖥️ Interactive Mode (default)
-Full UI with scroll capability:
-- Real-time transcription with speaker identification
-- Live translation to English (or your language of choice)
-- Color-coded speakers so you know who's saying what
-- Save transcripts for later (or for evidence)
+### Keyboard Shortcuts
 
 | Hotkey | What It Does |
 |--------|-------------|
-| `v` | Scroll through full conversation history |
+| `v` | Enter scroll mode to view full transcript |
 | `q` | Quit and save |
 
 **Scroll mode navigation:**
-- `j`/`k` or `↑`/`↓` - Scroll up/down
-- `g`/`G` - Jump to top/bottom
-- `q` - Exit scroll mode
+- `j`/`k` or `↑`/`↓` - Scroll up/down line by line
+- `g`/`G` - Jump to top/bottom of transcript
+- `q` - Exit scroll mode and return to live view
 
 ### 🌍 Language Support
 
