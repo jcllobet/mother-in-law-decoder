@@ -29,78 +29,81 @@ CHRISTMAS_GOLD = "#d4af37"
 CHRISTMAS_RED = "#c41e3a"
 
 # Language colors organized by linguistic family/region
-# English is always white; similar languages share similar color tones
+# Each family uses a spectrum of related colors for better differentiation
+# English is always light grey; target language rendered white
 LANGUAGE_COLORS = {
-    # === ENGLISH (always white) ===
-    "en": "white",
+    # === ENGLISH (neutral grey) ===
+    "en": "#b0b0b0",
 
-    # === GERMANIC (cool blues/silver - winter/ice theme) ===
-    "de": "#87ceeb",         # German - sky blue
-    "nl": "#add8e6",         # Dutch - light blue
-    "da": "#b0c4de",         # Danish - light steel blue
-    "no": "#87cefa",         # Norwegian - light sky blue
-    "sv": "#a0c4e8",         # Swedish - soft blue
+    # === GERMANIC (ice/winter spectrum: steel → sky → silver → pale cyan) ===
+    "de": "#4682b4",         # German - steel blue (darker, distinctive)
+    "nl": "#7ec8e3",         # Dutch - sky blue
+    "da": "#a8c8dc",         # Danish - pale steel
+    "no": "#5cacee",         # Norwegian - cornflower
+    "sv": "#b8d4e8",         # Swedish - ice blue
 
-    # === ROMANCE (warm golds/amber - warmth theme) ===
-    "es": "#d4af37",         # Spanish - antique gold
-    "fr": "#daa520",         # French - goldenrod
-    "it": "#f0c05a",         # Italian - soft gold
-    "pt": "#e6be5a",         # Portuguese - muted gold
-    "ro": "#cda434",         # Romanian - darker gold
-    "ca": "#d4a84b",         # Catalan - amber gold
-    "gl": "#c9a227",         # Galician - old gold
+    # === ROMANCE (warm sunset spectrum: gold → amber → coral → rose → blush) ===
+    "es": "#ffd700",         # Spanish - pure gold (bright, distinct)
+    "fr": "#ff6b6b",         # French - coral red (stands out)
+    "it": "#ffaa5e",         # Italian - warm tangerine
+    "pt": "#e8b923",         # Portuguese - saffron gold
+    "ro": "#db7093",         # Romanian - pale violet red (rose)
+    "ca": "#ff8c42",         # Catalan - mango orange
+    "gl": "#c9a227",         # Galician - antique gold
 
-    # === SLAVIC (purple/violet tones) ===
-    "ru": "#dda0dd",         # Russian - plum
-    "pl": "#d8bfd8",         # Polish - thistle
-    "cs": "#e6a8d7",         # Czech - orchid pink
-    "sk": "#dbb2d1",         # Slovak - light plum
-    "uk": "#da70d6",         # Ukrainian - orchid
-    "bg": "#d291bc",         # Bulgarian - pastel violet
-    "sr": "#c9a0dc",         # Serbian - wisteria
-    "hr": "#d7a9e3",         # Croatian - light orchid
-    "bs": "#cba4d4",         # Bosnian - soft violet
-    "sl": "#d3a4d9",         # Slovenian - lavender pink
-    "mk": "#d8a1d4",         # Macedonian - mauve
+    # === EAST/WEST SLAVIC (cool purple spectrum: violet → indigo → orchid) ===
+    "ru": "#9400d3",         # Russian - dark violet (bold)
+    "pl": "#8a2be2",         # Polish - blue violet
+    "cs": "#7b68ee",         # Czech - medium slate blue
+    "sk": "#9370db",         # Slovak - medium purple
+    "uk": "#ba55d3",         # Ukrainian - medium orchid
 
-    # === BALTIC & FINNO-UGRIC (teal/aqua - Baltic sea) ===
-    "lt": "#40e0d0",         # Lithuanian - turquoise
-    "lv": "#48d1cc",         # Latvian - medium turquoise
-    "et": "#00ced1",         # Estonian - dark turquoise
-    "fi": "#5f9ea0",         # Finnish - cadet blue
-    "hu": "#20b2aa",         # Hungarian - light sea green
+    # === SOUTH SLAVIC (warm magenta/pink spectrum: fuchsia → rose → pink) ===
+    "bg": "#ff1493",         # Bulgarian - deep pink (vibrant)
+    "sr": "#da70d6",         # Serbian - orchid
+    "hr": "#ff69b4",         # Croatian - hot pink
+    "bs": "#db7093",         # Bosnian - pale violet red
+    "sl": "#dda0dd",         # Slovenian - plum
+    "mk": "#ee82ee",         # Macedonian - violet
 
-    # === GREEK & BASQUE (unique colors) ===
-    "el": "#9acd32",         # Greek - yellow green (olive)
-    "eu": "#cd853f",         # Basque - peru (unique)
+    # === BALTIC & FINNO-UGRIC (aquatic spectrum: teal → cyan → mint → seafoam) ===
+    "lt": "#00ced1",         # Lithuanian - dark turquoise
+    "lv": "#20b2aa",         # Latvian - light sea green
+    "et": "#48d1cc",         # Estonian - medium turquoise
+    "fi": "#66cdaa",         # Finnish - medium aquamarine (greener)
+    "hu": "#40e0d0",         # Hungarian - turquoise (brighter)
 
-    # === MIDDLE EASTERN & TURKIC (copper/bronze tones) ===
-    "ar": "#cd7f32",         # Arabic - bronze
-    "he": "#b87333",         # Hebrew - copper
-    "fa": "#cc7722",         # Persian - ochre
-    "tr": "#d2691e",         # Turkish - chocolate
-    "ur": "#c2772e",         # Urdu - copper brown
+    # === GREEK & BASQUE (unique isolates - truly distinct colors) ===
+    "el": "#2e8b57",         # Greek - sea green (Mediterranean, darker than tropicals)
+    "eu": "#ffea00",         # Basque - electric yellow (completely unique)
 
-    # === SOUTH ASIAN (coral/salmon - vibrant warm) ===
-    "hi": "#ff7f50",         # Hindi - coral
-    "gu": "#fa8072",         # Gujarati - salmon
-    "mr": "#f08080",         # Marathi - light coral
-    "pa": "#e9967a",         # Punjabi - dark salmon
-    "ta": "#ffa07a",         # Tamil - light salmon
-    "te": "#ff8c69",         # Telugu - salmon orange
-    "ml": "#ff6f61",         # Malayalam - living coral
+    # === MIDDLE EASTERN & TURKIC (jewel tones: sapphire → indigo → teal → jade) ===
+    "ar": "#4169e1",         # Arabic - royal blue
+    "he": "#6a5acd",         # Hebrew - slate blue
+    "fa": "#008b8b",         # Persian - dark cyan (distinct)
+    "tr": "#1e90ff",         # Turkish - dodger blue
+    "ur": "#5f9ea0",         # Urdu - cadet blue
 
-    # === EAST ASIAN (red tones - festive/lucky) ===
-    "zh": "#c41e3a",         # Chinese - cardinal red
-    "ja": "#dc143c",         # Japanese - crimson
-    "ko": "#b22234",         # Korean - deep red
+    # === SOUTH ASIAN (vibrant warm: coral → tangerine → peach → apricot → pink) ===
+    "hi": "#ff6347",         # Hindi - tomato (bright)
+    "gu": "#ff8c00",         # Gujarati - dark orange
+    "mr": "#ffa07a",         # Marathi - light salmon
+    "pa": "#f08080",         # Punjabi - light coral
+    "ta": "#ff7256",         # Tamil - coral (distinct)
+    "te": "#e9967a",         # Telugu - dark salmon
+    "ml": "#ff69b4",         # Malayalam - hot pink (stands out)
 
-    # === SOUTHEAST ASIAN (green tones - tropical) ===
-    "vi": "#90ee90",         # Vietnamese - light green
+    # === EAST ASIAN (red/crimson spectrum with more spread) ===
+    "zh": "#dc143c",         # Chinese - crimson
+    "ja": "#ff4500",         # Japanese - orange red (distinct)
+    "ko": "#c71585",         # Korean - medium violet red (purple-red)
+
+    # === SOUTHEAST ASIAN (tropical greens: lime → emerald → jade → chartreuse) ===
+    "vi": "#32cd32",         # Vietnamese - lime green (vivid)
     "th": "#98fb98",         # Thai - pale green
-    "id": "#8fbc8f",         # Indonesian - dark sea green
-    "ms": "#66cdaa",         # Malay - medium aquamarine
-    "tl": "#7cfc00",         # Tagalog - lawn green
+    "id": "#3cb371",         # Indonesian - medium sea green (richer)
+    "ms": "#00fa9a",         # Malay - medium spring green
+    "tl": "#7fff00",         # Tagalog - chartreuse (yellow-green)
 }
 DEFAULT_LANGUAGE_COLOR = "#d4af37"  # Gold fallback
 
@@ -140,6 +143,9 @@ class NegotiationUI:  # TODO: Rename to FamilyChatUI in future refactor
         
         self._running = threading.Event()
         self._non_final_tokens: list[dict] = []
+
+        # Per-speaker language tracking (for detecting language changes)
+        self._speaker_languages: dict[int, str] = {}
 
         # Status
         self._status_message = ""
@@ -309,11 +315,13 @@ class NegotiationUI:  # TODO: Rename to FamilyChatUI in future refactor
 
             # Speaker changed - flush buffers, start new paragraph
             if speaker is not None and speaker != current_speaker:
-                # Flush pending content
-                if original_buffer:
-                    parts.append(original_buffer)
-                    if translation_buffer:
-                        parts.append(f" ({translation_buffer.strip()})")
+                # Flush pending content (clean internal tokens)
+                clean_orig = original_buffer.replace("<end>", "").replace("<END>", "")
+                clean_trans = translation_buffer.replace("<end>", "").replace("<END>", "")
+                if clean_orig:
+                    parts.append(clean_orig)
+                    if clean_trans:
+                        parts.append(f" ({clean_trans.strip()})")
                 original_buffer = ""
                 translation_buffer = ""
 
@@ -333,17 +341,21 @@ class NegotiationUI:  # TODO: Rename to FamilyChatUI in future refactor
             else:
                 # If we have pending translation, flush first
                 if translation_buffer:
-                    parts.append(original_buffer)
-                    parts.append(f" ({translation_buffer.strip()})")
+                    clean_orig = original_buffer.replace("<end>", "").replace("<END>", "")
+                    clean_trans = translation_buffer.replace("<end>", "").replace("<END>", "")
+                    parts.append(clean_orig)
+                    parts.append(f" ({clean_trans.strip()})")
                     original_buffer = ""
                     translation_buffer = ""
                 original_buffer += text
 
-        # Final flush
-        if original_buffer:
-            parts.append(original_buffer)
-            if translation_buffer:
-                parts.append(f" ({translation_buffer.strip()})")
+        # Final flush (clean internal tokens)
+        clean_orig = original_buffer.replace("<end>", "").replace("<END>", "")
+        clean_trans = translation_buffer.replace("<end>", "").replace("<END>", "")
+        if clean_orig:
+            parts.append(clean_orig)
+            if clean_trans:
+                parts.append(f" ({clean_trans.strip()})")
 
         return "".join(parts)
     
@@ -353,47 +365,38 @@ class NegotiationUI:  # TODO: Rename to FamilyChatUI in future refactor
         return SPEAKER_STYLES[sid % len(SPEAKER_STYLES)]
 
     def _get_language_color(self, language: str) -> str:
-        """Get color for a language (English = white, regional families share tones)."""
+        """Get color for a language. Target language is always white."""
+        if language == self.session.target_language:
+            return "white"
         return LANGUAGE_COLORS.get(language, DEFAULT_LANGUAGE_COLOR)
 
     def _get_language_flag(self, language: str) -> str:
-        """Get flag emoji for a language."""
+        """Get flag emoji or text code for a language."""
+        # Languages without official country flags use text codes
+        TEXT_CODES = {
+            "ca": "[CAT]",  # Catalan
+            "eu": "[BAS]",  # Basque
+            "gl": "[GAL]",  # Galician
+        }
+        if language in TEXT_CODES:
+            return TEXT_CODES[language]
         from .languages import get_language_flag
         return get_language_flag(language)
 
-    def _flush_buffers(
-        self,
-        text: Text,
-        original: str,
-        translation: str,
-        lang: str,
-        is_final: bool = True
-    ) -> None:
-        """Flush accumulated original + translation to text with parenthetical format."""
-        if not original and not translation:
-            return
-
-        lang_color = self._get_language_color(lang) if lang else DEFAULT_LANGUAGE_COLOR
-
-        # Apply styling based on finality
-        if is_final:
-            if original:
-                text.append(original, style=lang_color)
-            if translation:
-                text.append(" (", style="dim")
-                text.append(translation.strip(), style="white")
-                text.append(")", style="dim")
-        else:
-            # Non-final (in-progress) text is dim and italic
-            if original:
-                text.append(original, style=f"dim italic {lang_color}")
-            if translation:
-                text.append(" (", style="dim")
-                text.append(translation.strip(), style="dim italic white")
-                text.append(")", style="dim")
+    def _clean_display_text(self, text: str) -> str:
+        """Remove internal tokens like <end> that shouldn't be displayed."""
+        return text.replace("<end>", "").replace("<END>", "")
 
     def _render_transcript(self) -> Text:
-        """Render transcript with inline parenthetical translations and language colors."""
+        """Render transcript with inline parenthetical translations and language colors.
+
+        Language flags are shown only when needed for clarity:
+        - When a speaker starts speaking (to identify their language)
+        - When a speaker switches language mid-speech
+
+        Flags appear at the END of the original text (before translation) to allow
+        time for language detection.
+        """
         text = Text()
         current_speaker: Optional[int | str] = None
 
@@ -402,6 +405,10 @@ class NegotiationUI:  # TODO: Rename to FamilyChatUI in future refactor
         translation_buffer = ""
         current_lang: Optional[str] = None
         buffer_is_final = True
+
+        # Track whether the current buffer needs a flag when flushed
+        # (set True on speaker change or language change)
+        needs_flag = False
 
         all_tokens = self.session.final_tokens + self._non_final_tokens
 
@@ -419,8 +426,12 @@ class NegotiationUI:  # TODO: Rename to FamilyChatUI in future refactor
 
             # Speaker changed - flush buffers, start new paragraph
             if speaker is not None and speaker != current_speaker:
-                # Flush any pending content
-                self._flush_buffers(text, original_buffer, translation_buffer, current_lang, buffer_is_final)
+                # Flush any pending content (with flag if needed)
+                if original_buffer or translation_buffer:
+                    self._flush_buffers_with_flag(
+                        text, original_buffer, translation_buffer,
+                        current_lang, buffer_is_final, show_flag=needs_flag
+                    )
                 original_buffer = ""
                 translation_buffer = ""
                 buffer_is_final = True
@@ -434,6 +445,9 @@ class NegotiationUI:  # TODO: Rename to FamilyChatUI in future refactor
                 profile = self.session.get_speaker_profile(speaker)
                 label = profile.get_label()
                 text.append(f"{emoji} {label}: ", style=f"bold {speaker_color}")
+
+                # New speaker always needs a flag on their first phrase
+                needs_flag = True
                 current_lang = language
                 token_text = token_text.lstrip()
 
@@ -445,18 +459,78 @@ class NegotiationUI:  # TODO: Rename to FamilyChatUI in future refactor
             if is_translation:
                 translation_buffer += token_text
             else:
-                # If we have pending translation, flush first (phrase complete)
-                if translation_buffer:
-                    self._flush_buffers(text, original_buffer, translation_buffer, current_lang, buffer_is_final)
+                # Language changed for this speaker - flush with flag, mark next for flag too
+                if language and current_lang and language != current_lang:
+                    # Flush previous phrase WITH flag (language just changed)
+                    self._flush_buffers_with_flag(
+                        text, original_buffer, translation_buffer,
+                        current_lang, buffer_is_final, show_flag=True
+                    )
                     original_buffer = ""
                     translation_buffer = ""
                     buffer_is_final = is_final
+                    # Next phrase also needs flag (it's in the new language)
+                    needs_flag = True
+                # If we have pending translation, flush (phrase complete)
+                elif translation_buffer:
+                    self._flush_buffers_with_flag(
+                        text, original_buffer, translation_buffer,
+                        current_lang, buffer_is_final, show_flag=needs_flag
+                    )
+                    original_buffer = ""
+                    translation_buffer = ""
+                    buffer_is_final = is_final
+                    # Flag was shown (if needed), reset
+                    needs_flag = False
                 original_buffer += token_text
                 current_lang = language
 
         # Final flush
-        self._flush_buffers(text, original_buffer, translation_buffer, current_lang, buffer_is_final)
+        self._flush_buffers_with_flag(
+            text, original_buffer, translation_buffer,
+            current_lang, buffer_is_final, show_flag=needs_flag
+        )
         return text
+
+    def _flush_buffers_with_flag(
+        self,
+        text: Text,
+        original: str,
+        translation: str,
+        lang: str,
+        is_final: bool = True,
+        show_flag: bool = False
+    ) -> None:
+        """Flush buffers and optionally append language flag after original text."""
+        # Clean internal tokens from display
+        original = self._clean_display_text(original)
+        translation = self._clean_display_text(translation)
+
+        if not original and not translation:
+            return
+
+        lang_color = self._get_language_color(lang) if lang else DEFAULT_LANGUAGE_COLOR
+
+        # Apply styling based on finality
+        if is_final:
+            if original:
+                text.append(original, style=lang_color)
+            # Add flag after original text, before translation (only if requested)
+            if show_flag and lang:
+                flag = self._get_language_flag(lang)
+                text.append(f" {flag}", style="dim")
+            if translation:
+                text.append(" (", style="dim")
+                text.append(translation.strip(), style="white")
+                text.append(")", style="dim")
+        else:
+            # Non-final (in-progress) text is dim and italic - no flag yet
+            if original:
+                text.append(original, style=f"dim italic {lang_color}")
+            if translation:
+                text.append(" (", style="dim")
+                text.append(translation.strip(), style="dim italic white")
+                text.append(")", style="dim")
     
     def _render_live_transcript(self) -> Text:
         """Render last N lines of transcript."""
