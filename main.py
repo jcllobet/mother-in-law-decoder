@@ -22,7 +22,7 @@ from live_transcriber import (
 )
 
 # Default context for transcription
-DEFAULT_CONTEXT = """This is a casual family conversation between people who speak different languages. The conversation may include family matters, daily life topics, stories, jokes, and personal anecdotes. Pay attention to conversational nuances, cultural references, and emotional tone."""
+DEFAULT_CONTEXT = """This is a casual conversation between people speaking different languages. Pay attention to conversational nuances, cultural references, and emotional tone."""
 
 
 def main():
@@ -63,6 +63,18 @@ Scroll mode navigation:
         action="store_true",
         help="List available audio input devices and exit"
     )
+    parser.add_argument(
+        "--source-languages",
+        type=str,
+        default=None,
+        help="Comma-separated list of source language codes (e.g., 'zh,es,fr')"
+    )
+    parser.add_argument(
+        "--target-language",
+        type=str,
+        default=None,
+        help="Target translation language code (e.g., 'en')"
+    )
     args = parser.parse_args()
     
     # List devices mode
@@ -100,14 +112,60 @@ Scroll mode navigation:
     # Set context
     context: str = args.context if args.context else DEFAULT_CONTEXT
 
+    # Language selection
+    source_languages: list[str] = []
+    target_language: str = ""
+
+    # Check if languages provided via CLI
+    if args.source_languages and args.target_language:
+        source_languages = [lang.strip() for lang in args.source_languages.split(',')]
+        target_language = args.target_language.strip()
+
+        # Validate language codes
+        from live_transcriber.languages import get_all_language_codes
+        valid_codes = get_all_language_codes()
+        invalid_source = [lang for lang in source_languages if lang not in valid_codes]
+        if invalid_source:
+            print(f"Error: Invalid source language codes: {', '.join(invalid_source)}")
+            sys.exit(1)
+        if target_language not in valid_codes:
+            print(f"Error: Invalid target language code: {target_language}")
+            sys.exit(1)
+    else:
+        # Interactive mode (default)
+        from live_transcriber.language_selector import select_languages
+        source_languages, target_language = select_languages()
+        if not source_languages or not target_language:
+            print("Language selection cancelled")
+            sys.exit(0)
+
     # Initialize base components
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    session = Session(args.session, base_dir)
+    session = Session(
+        args.session,
+        base_dir,
+        source_languages,
+        target_language,
+    )
+
+    # Handle old sessions without language config
+    if session.was_resumed and not hasattr(session, 'source_languages'):
+        print("\n⚠️  This session needs language configuration\n")
+        from live_transcriber.language_selector import select_languages
+        source_languages, target_language = select_languages()
+        if not source_languages or not target_language:
+            print("Language selection cancelled")
+            sys.exit(0)
+        session.source_languages = source_languages
+        session.target_language = target_language
+        session.save_state()
 
     # Initialize transcriber and UI
     transcriber = Transcriber(
         api_key=soniox_key,
         session=session,
+        source_languages=session.source_languages,
+        target_language=session.target_language,
         context=context,
         device_index=args.device,
     )

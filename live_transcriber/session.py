@@ -41,46 +41,84 @@ class SpeakerProfile:
             return None
         return max(self.language_counts, key=self.language_counts.get)
     
-    def get_speaker_type(self) -> Optional[str]:
+    def get_speaker_type(
+        self,
+        source_languages: list[str],
+        target_language: str,
+    ) -> Optional[str]:
         """Classify speaker after enough samples."""
         if self.total_samples < MIN_SAMPLES_FOR_LABELING:
             return None
 
-        # TODO: Language generalization - Currently assumes English/Chinese binary.
-        # This hardcoded en/zh logic should be generalized to support any language pair
-        # detected in the conversation (e.g., Bulgarian/English, Spanish/English, etc.).
-        en_count = self.language_counts.get("en", 0)
-        zh_count = self.language_counts.get("zh", 0)
-        total = en_count + zh_count
+        from .languages import get_language_name
+
+        target_count = self.language_counts.get(target_language, 0)
+        source_counts = sum(
+            self.language_counts.get(lang, 0)
+            for lang in source_languages
+        )
+        total = target_count + source_counts
 
         if total == 0:
             return None
 
-        en_ratio = en_count / total
-        zh_ratio = zh_count / total
+        target_ratio = target_count / total
 
-        # More than 80% one language = monolingual
-        if en_ratio >= 0.8:
-            return "English"
-        elif zh_ratio >= 0.8:
-            return "Chinese"
+        # More than 80% target language = monolingual target speaker
+        if target_ratio >= 0.8:
+            return get_language_name(target_language)
+        # Less than 20% target language = monolingual source speaker
+        elif target_ratio <= 0.2:
+            # Find dominant source language
+            dominant = max(
+                source_languages,
+                key=lambda lang: self.language_counts.get(lang, 0)
+            )
+            return get_language_name(dominant)
         else:
-            return "Bilingual"
+            return "Multilingual"
     
-    def get_label(self) -> str:
-        """Get display label for speaker."""
-        speaker_type = self.get_speaker_type()
+    def get_label(
+        self,
+        source_languages: list[str],
+        target_language: str,
+    ) -> str:
+        """Get display label for speaker with language flags."""
+        from .languages import get_language_flag
+
+        # Get top 3 languages this speaker has used
+        languages_used = sorted(
+            self.language_counts.items(),
+            key=lambda x: x[1],
+            reverse=True
+        )
+
+        lang_flags = ""
+        if languages_used:
+            # Show top 3 language flags
+            top_langs = [code for code, count in languages_used[:3] if count > 0]
+            lang_flags = " " + " ".join(get_language_flag(code) for code in top_langs)
+
+        speaker_type = self.get_speaker_type(source_languages, target_language)
         if speaker_type:
-            return f"{speaker_type} Speaker {self.speaker_id}"
-        return f"Speaker {self.speaker_id}"
+            return f"{speaker_type} Speaker {self.speaker_id}{lang_flags}"
+        return f"Speaker {self.speaker_id}{lang_flags}"
     
-    # TODO: Language generalization - Replace with is_source_language_speaker().
-    # This method name and logic are hardcoded to Chinese. Should be generalized
-    # to detect if speaker uses the "source" language (non-English language being translated).
-    def is_chinese_speaker(self) -> bool:
-        """Check if speaker primarily uses Chinese."""
-        speaker_type = self.get_speaker_type()
-        return speaker_type in ("Chinese", "Bilingual")
+    def is_source_language_speaker(
+        self,
+        source_languages: list[str],
+        target_language: str,
+    ) -> bool:
+        """Check if speaker primarily uses source languages (not target)."""
+        from .languages import get_language_name
+
+        speaker_type = self.get_speaker_type(source_languages, target_language)
+        if speaker_type is None:
+            return False
+
+        target_name = get_language_name(target_language)
+        # Speaker is a source language speaker if they're not primarily the target language
+        return speaker_type != target_name
     
     def to_dict(self) -> dict:
         """Serialize to dictionary."""
@@ -102,10 +140,18 @@ class SpeakerProfile:
 
 class Session:
     """Manage a transcription session with state persistence."""
-    
-    def __init__(self, name: str, base_dir: str):
+
+    def __init__(
+        self,
+        name: str,
+        base_dir: str,
+        source_languages: list[str],
+        target_language: str,
+    ):
         self.name = name
         self.base_dir = base_dir
+        self.source_languages = source_languages
+        self.target_language = target_language
         self.session_dir = os.path.join(base_dir, "live-conversations", name)
         self.state_file = os.path.join(self.session_dir, "session_state.json")
         self.speaker_profiles: dict[int, SpeakerProfile] = {}
@@ -113,10 +159,10 @@ class Session:
         self.segment_count = 0
         self.audio_frames: list[bytes] = []
         self._resumed = False
-        
+
         # Create session directory
         os.makedirs(self.session_dir, exist_ok=True)
-        
+
         # Load existing state if resuming
         self._load_state()
     
@@ -131,16 +177,21 @@ class Session:
             try:
                 with open(self.state_file, "r", encoding="utf-8") as f:
                     state = json.load(f)
-                
+
                 self.segment_count = state.get("segment_count", 0)
                 self.final_tokens = state.get("tokens", [])
-                
+
+                # Load language config if available (backward compatibility)
+                if "source_languages" in state and "target_language" in state:
+                    self.source_languages = state["source_languages"]
+                    self.target_language = state["target_language"]
+
                 # Restore speaker profiles
                 for sid, profile_data in state.get("speaker_profiles", {}).items():
                     self.speaker_profiles[int(sid)] = SpeakerProfile.from_dict(
                         int(sid), profile_data
                     )
-                
+
                 self._resumed = True
             except Exception:
                 pass  # Start fresh if state is corrupted
@@ -160,6 +211,8 @@ class Session:
         state = {
             "name": self.name,
             "updated": datetime.now().isoformat(),
+            "source_languages": self.source_languages,
+            "target_language": self.target_language,
             "segment_count": self.segment_count,
             "tokens": self.final_tokens,
             "speaker_profiles": {
@@ -167,7 +220,7 @@ class Session:
                 for sid, profile in self.speaker_profiles.items()
             }
         }
-        
+
         with open(self.state_file, "w", encoding="utf-8") as f:
             json.dump(state, f, ensure_ascii=False, indent=2)
     
@@ -185,17 +238,14 @@ class Session:
         """Add a finalized token to the session."""
         self.final_tokens.append(token)
     
-    # TODO: Language generalization - Replace with get_source_language_tokens().
-    # Hardcoded to filter for Chinese ("zh"). Should be generalized to filter
-    # for any non-English source language detected in the conversation.
-    def get_chinese_tokens(self) -> list[dict]:
-        """Get all tokens from Chinese speakers or in Chinese language."""
-        chinese_tokens = []
+    def get_source_language_tokens(self) -> list[dict]:
+        """Get all tokens in source languages (non-target languages)."""
+        source_tokens = []
         for token in self.final_tokens:
             language = token.get("language")
-            if language == "zh":
-                chinese_tokens.append(token)
-        return chinese_tokens
+            if language and language != self.target_language:
+                source_tokens.append(token)
+        return source_tokens
     
     def get_tokens_by_speaker(self, speaker_id: int) -> list[dict]:
         """Get all tokens from a specific speaker."""
@@ -217,8 +267,14 @@ class Session:
                 "tokens": self.final_tokens,
                 "speaker_profiles": {
                     sid: {
-                        "type": profile.get_speaker_type(),
-                        "label": profile.get_label(),
+                        "type": profile.get_speaker_type(
+                            self.source_languages,
+                            self.target_language
+                        ),
+                        "label": profile.get_label(
+                            self.source_languages,
+                            self.target_language
+                        ),
                         "language_counts": dict(profile.language_counts),
                     }
                     for sid, profile in self.speaker_profiles.items()
@@ -292,7 +348,7 @@ class Session:
                 current_language = None
                 current_is_translation = False
                 profile = self.get_speaker_profile(speaker)
-                text_parts.append(f"{profile.get_label()}:")
+                text_parts.append(f"{profile.get_label(self.source_languages, self.target_language)}:")
             
             # Language or translation status changed
             lang_changed = language is not None and language != current_language

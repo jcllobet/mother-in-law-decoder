@@ -35,16 +35,7 @@ SPEAKER_COLORS = [
     "cyan",
 ]
 
-# Language flags
-# TODO: Language generalization - Add more language flags.
-# Currently only supports 4 languages. Expand to cover all Soniox-supported languages
-# including Bulgarian (🇧🇬), Russian (🇷🇺), Spanish (🇪🇸), French (🇫🇷), etc.
-LANGUAGE_FLAGS = {
-    "en": "🇺🇸",
-    "zh": "🇨🇳",
-    "he": "🇮🇱",
-    "ca": "🇪🇸",  # Catalan - using Spain flag
-}
+# Language flags are now handled by the languages module
 
 
 class NegotiationUI:  # TODO: Rename to FamilyChatUI in future refactor
@@ -258,7 +249,8 @@ class NegotiationUI:  # TODO: Rename to FamilyChatUI in future refactor
     
     def _get_language_flag(self, language: str) -> str:
         """Get flag emoji for a language."""
-        return LANGUAGE_FLAGS.get(language, "🌐")
+        from .languages import get_language_flag
+        return get_language_flag(language)
     
     def _render_transcript(self) -> Text:
         """Render transcript as Rich Text - flowing paragraphs."""
@@ -291,7 +283,11 @@ class NegotiationUI:  # TODO: Rename to FamilyChatUI in future refactor
                 # Use unique color per speaker
                 current_speaker_color = self._get_speaker_color(speaker)
                 flag = self._get_language_flag(language) if language else ""
-                text.append(f"{profile.get_label()}: {flag} ", style=f"bold {current_speaker_color}")
+                label = profile.get_label(
+                    self.session.source_languages,
+                    self.session.target_language
+                )
+                text.append(f"{label}: {flag} ", style=f"bold {current_speaker_color}")
                 token_text = token_text.lstrip()
             
             # Translation line - indent on new line
@@ -347,6 +343,10 @@ class NegotiationUI:  # TODO: Rename to FamilyChatUI in future refactor
         
         text.append(f" │ {self.session.name}", style="bold")
         text.append(f" │ {len(self.session.final_tokens)} tokens", style="dim")
+
+        # Show language configuration
+        source_langs = ",".join(self.session.source_languages)
+        text.append(f" │ Langs: {source_langs} → {self.session.target_language}", style="dim")
         
         if self._error_message:
             text.append(f" │ {self._error_message}", style="red")

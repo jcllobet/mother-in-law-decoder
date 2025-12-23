@@ -21,45 +21,33 @@ NUM_CHANNELS = 1
 CHUNK_SIZE = 3200  # ~200ms at 16kHz
 
 
-# TODO: Language generalization - Currently hardcoded to 4 languages.
-# Soniox Live API supports many more languages (Bulgarian, Russian, Spanish, French, etc.).
-# Make this user-configurable to support all available Soniox languages.
-# Supported source languages (other party may speak these)
-# English is always the target/output language
-SUPPORTED_LANGUAGES = ["en", "zh", "he", "ca"]  # English, Chinese, Hebrew, Catalan
-
-
 def get_soniox_config(
     api_key: str,
+    source_languages: list[str],
+    target_language: str,
     context: Optional[str] = None,
-    languages: Optional[list[str]] = None,
 ) -> dict:
     """Get Soniox STT config for multilingual transcription.
-    
+
     Args:
         api_key: Soniox API key
+        source_languages: Source language hints for speech recognition
+        target_language: Target language for translation
         context: Optional context hint for better accuracy
-        languages: Language hints (defaults to SUPPORTED_LANGUAGES)
     """
-    lang_hints = languages or SUPPORTED_LANGUAGES
-    
     config = {
         "api_key": api_key,
         "model": "stt-rt-v3",
         "audio_format": "pcm_s16le",
         "sample_rate": SAMPLE_RATE,
         "num_channels": NUM_CHANNELS,
-        "language_hints": lang_hints,
+        "language_hints": source_languages,
         "enable_language_identification": True,
         "enable_speaker_diarization": True,
         "enable_endpoint_detection": True,
-        # TODO: User-configurable target translation language.
-        # Currently hardcoded to "en" (English). Should allow users to set their preferred
-        # target language (e.g., "en", "es", "de", etc.) via CLI argument or config file.
-        # Translate all non-English to English
         "translation": {
             "type": "one_way",
-            "target_language": "en",
+            "target_language": target_language,
         },
     }
     
@@ -83,11 +71,13 @@ def list_audio_devices() -> list[tuple[int, str]]:
 
 class Transcriber:
     """Handles WebSocket connection and audio streaming for transcription."""
-    
+
     def __init__(
         self,
         api_key: str,
         session: Session,
+        source_languages: list[str],
+        target_language: str,
         on_tokens: Optional[Callable[[list[dict], list[dict]], None]] = None,
         on_error: Optional[Callable[[str], None]] = None,
         on_connected: Optional[Callable[[], None]] = None,
@@ -96,6 +86,8 @@ class Transcriber:
     ):
         self.api_key = api_key
         self.session = session
+        self.source_languages = source_languages
+        self.target_language = target_language
         self.on_tokens = on_tokens
         self.on_error = on_error
         self.on_connected = on_connected
@@ -248,7 +240,12 @@ class Transcriber:
         
         try:
             # Connect to WebSocket
-            config = get_soniox_config(self.api_key, self.context)
+            config = get_soniox_config(
+                self.api_key,
+                self.source_languages,
+                self.target_language,
+                self.context
+            )
             self._ws = connect(SONIOX_WEBSOCKET_URL)
             self._ws.send(json.dumps(config))
             
