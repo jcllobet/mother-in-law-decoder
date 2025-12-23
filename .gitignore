@@ -2,6 +2,7 @@
 output/
 old/
 
+
 # Audio files
 *.mp3
 *.wav
@@ -9,11 +10,12 @@ old/
 # Soniox cache
 .soniox_cache/
 
-.vscode/
+
 
 # Python
 venv/
 env/
+.vscode/
 __pycache__/
 *.pyc
 .env
