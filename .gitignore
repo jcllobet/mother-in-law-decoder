@@ -1,0 +1,22 @@
+# Transcripts
+live-conversations/
+async_transcripts/
+old/
+recordings/
+
+# Audio files
+*.mp3
+*.wav
+
+# Soniox cache
+.soniox_cache/
+
+# Python
+venv/
+__pycache__/
+*.pyc
+.env
+family_chat/__pycache__/
+
+# OS
+.DS_Store
