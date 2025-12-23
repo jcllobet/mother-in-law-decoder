@@ -149,15 +149,20 @@ def select_languages() -> tuple[list[str], str]:
         return ([], "")
     source = selector.result
 
-    # Step 2: Target language (single-select)
-    console.print("\n")
-    selector = LanguageSelector("Select TARGET language (translate to)", multi_select=False)
-    selector.create_app().run()
+    # Step 2: Target language (default to English)
+    target = "en"
+    console.print(f"\n[cyan]Target language:[/cyan] English (default)")
+    change_target = input("Change target language? [y/N] ").strip().lower()
 
-    if selector.cancelled or not selector.result:
-        console.print("\n[yellow]Selection cancelled[/yellow]\n")
-        return ([], "")
-    target = selector.result[0]
+    if change_target == "y":
+        console.print("\n")
+        selector = LanguageSelector("Select TARGET language (translate to)", multi_select=False)
+        selector.create_app().run()
+
+        if selector.cancelled or not selector.result:
+            console.print("\n[yellow]Selection cancelled[/yellow]\n")
+            return ([], "")
+        target = selector.result[0]
 
     # Step 3: Confirmation
     console.print(f"\n[cyan]Source:[/cyan] {', '.join(source)}")

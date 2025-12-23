@@ -303,13 +303,16 @@ class NegotiationUI:  # TODO: Rename to FamilyChatUI in future refactor
                 text.append(f"\n{flag} ", style=current_speaker_color)
                 token_text = token_text.lstrip()
             
-            # Color text based on speaker, with variations for state
+            # Color text: pink for original, white for translation
             if not is_final:
-                text.append(token_text, style=f"dim italic {current_speaker_color}")
+                if is_translation:
+                    text.append(token_text, style="dim italic white")
+                else:
+                    text.append(token_text, style="dim italic magenta")
             elif is_translation:
-                text.append(token_text, style=f"italic {current_speaker_color}")
+                text.append(token_text, style="white")
             else:
-                text.append(token_text, style=current_speaker_color)
+                text.append(token_text, style="magenta")
         
         return text
     
