@@ -13,11 +13,13 @@ from collections import defaultdict
 # Audio settings (shared with transcription module)
 SAMPLE_RATE = 16000
 NUM_CHANNELS = 1
+AUDIO_SAMPLE_WIDTH = 2  # 16-bit PCM
 
 # Language confidence threshold
 LANGUAGE_CONFIDENCE_THRESHOLD = 0.5
-# Samples needed before labeling speaker type
-MIN_SAMPLES_FOR_LABELING = 10
+
+# Timestamp format for segment filenames
+SEGMENT_TIMESTAMP_FORMAT = '%Y%m%d_%H%M%S'
 
 
 class SpeakerProfile:
@@ -41,90 +43,10 @@ class SpeakerProfile:
             return None
         return max(self.language_counts, key=self.language_counts.get)
     
-    # def get_speaker_type(
-    #     self,
-    #     source_languages: list[str],
-    #     target_language: str,
-    # ) -> Optional[str]:
-    #     """Classify speaker after enough samples."""
-    #     if self.total_samples < MIN_SAMPLES_FOR_LABELING:
-    #         return None
-
-    #     from .languages import get_language_name
-
-    #     target_count = self.language_counts.get(target_language, 0)
-    #     source_counts = sum(
-    #         self.language_counts.get(lang, 0)
-    #         for lang in source_languages
-    #     )
-    #     total = target_count + source_counts
-
-    #     if total == 0:
-    #         return None
-
-    #     target_ratio = target_count / total
-
-    #     # More than 80% target language = monolingual target speaker
-    #     if target_ratio >= 0.8:
-    #         return get_language_name(target_language)
-    #     # Less than 20% target language = monolingual source speaker
-    #     elif target_ratio <= 0.2:
-    #         # Find dominant source language
-    #         dominant = max(
-    #             source_languages,
-    #             key=lambda lang: self.language_counts.get(lang, 0)
-    #         )
-    #         return get_language_name(dominant)
-    #     else:
-    #         return "Multilingual"
-    
-    def get_label(
-        self,
-        source_languages: list[str] | None = None,
-        target_language: str | None = None,
-    ) -> str:
-        """Get display label for speaker (simplified to just 'Speaker X')."""
-        # Language info is now shown inline with the text, so just use simple label
+    def get_label(self) -> str:
+        """Get display label for speaker."""
         return f"Speaker {self.speaker_id}"
 
-        # --- Commented out for potential future use ---
-        # from .languages import get_language_flag
-        #
-        # # Get top 3 languages this speaker has used
-        # languages_used = sorted(
-        #     self.language_counts.items(),
-        #     key=lambda x: x[1],
-        #     reverse=True
-        # )
-        #
-        # lang_flags = ""
-        # if languages_used:
-        #     # Show top 3 language flags
-        #     top_langs = [code for code, count in languages_used[:3] if count > 0]
-        #     lang_flags = " " + " ".join(get_language_flag(code) for code in top_langs)
-        #
-        # speaker_type = self.get_speaker_type(source_languages, target_language)
-        # if speaker_type:
-        #     return f"{speaker_type} Speaker {self.speaker_id}{lang_flags}"
-        # return f"Speaker {self.speaker_id}{lang_flags}"
-    
-    # --- Commented out for potential future use ---
-    # def is_source_language_speaker(
-    #     self,
-    #     source_languages: list[str],
-    #     target_language: str,
-    # ) -> bool:
-    #     """Check if speaker primarily uses source languages (not target)."""
-    #     from .languages import get_language_name
-    #
-    #     speaker_type = self.get_speaker_type(source_languages, target_language)
-    #     if speaker_type is None:
-    #         return False
-    #
-    #     target_name = get_language_name(target_language)
-    #     # Speaker is a source language speaker if they're not primarily the target language
-    #     return speaker_type != target_name
-    
     def to_dict(self) -> dict:
         """Serialize to dictionary."""
         return {
@@ -157,13 +79,13 @@ class Session:
         self.base_dir = base_dir
         self.source_languages = source_languages
         self.target_language = target_language
-        self.session_dir = os.path.join(base_dir, "live-conversations", name)
+        self.session_dir = os.path.join(base_dir, "output", name)
         self.state_file = os.path.join(self.session_dir, "session_state.json")
         self.speaker_profiles: dict[int, SpeakerProfile] = {}
         self.final_tokens: list[dict] = []
         self.segment_count = 0
         self.audio_frames: list[bytes] = []
-        self._resumed = False
+        self._was_resumed = False
 
         # Create session directory
         os.makedirs(self.session_dir, exist_ok=True)
@@ -174,7 +96,7 @@ class Session:
     @property
     def was_resumed(self) -> bool:
         """Check if session was resumed from existing state."""
-        return self._resumed
+        return self._was_resumed
     
     def _load_state(self) -> None:
         """Load session state if it exists."""
@@ -197,13 +119,13 @@ class Session:
                         int(sid), profile_data
                     )
 
-                self._resumed = True
-            except Exception:
+                self._was_resumed = True
+            except (json.JSONDecodeError, KeyError, TypeError, ValueError):
                 pass  # Start fresh if state is corrupted
     
     def get_resume_info(self) -> Optional[dict]:
         """Get information about resumed session."""
-        if not self._resumed:
+        if not self._was_resumed:
             return None
         return {
             "segment_count": self.segment_count,
@@ -259,7 +181,7 @@ class Session:
     def save_segment(self) -> str:
         """Save current segment (transcript + audio)."""
         self.segment_count += 1
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        timestamp = datetime.now().strftime(SEGMENT_TIMESTAMP_FORMAT)
         base_name = f"segment_{self.segment_count:03d}_{timestamp}"
         
         # Save transcript JSON
@@ -302,7 +224,7 @@ class Session:
         # Save WAV
         with wave.open(wav_path, "wb") as wf:
             wf.setnchannels(NUM_CHANNELS)
-            wf.setsampwidth(2)  # 16-bit
+            wf.setsampwidth(AUDIO_SAMPLE_WIDTH)
             wf.setframerate(SAMPLE_RATE)
             wf.writeframes(b"".join(self.audio_frames))
         

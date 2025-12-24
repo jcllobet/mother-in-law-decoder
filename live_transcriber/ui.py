@@ -6,6 +6,7 @@ Terminal-native keyboard controls (only when terminal is focused).
 import sys
 import select
 import threading
+import time
 import tty
 import termios
 from typing import Optional
@@ -18,10 +19,14 @@ from rich.live import Live
 
 from .session import Session
 from .transcription import Transcriber
+from .languages import get_language_flag
 
 # Display settings
 LIVE_VIEW_LINES = 24
 SCROLL_PAGE_SIZE = 20
+UI_REFRESH_RATE = 4  # Hz
+KEY_POLL_INTERVAL = 0.05  # seconds
+MAIN_LOOP_INTERVAL = 0.1  # seconds
 
 # Christmas colors (matching language_selector.py)
 CHRISTMAS_GREEN = "#165b33"
@@ -129,8 +134,8 @@ SPEAKER_STYLES = [
 # Language flags are now handled by the languages module
 
 
-class NegotiationUI:  # TODO: Rename to FamilyChatUI in future refactor
-    """Rich-based terminal UI for family conversations with real-time keyboard controls."""
+class LiveTranscriptUI:
+    """Rich-based terminal UI for live transcription with real-time keyboard controls."""
     
     def __init__(
         self,
@@ -145,7 +150,7 @@ class NegotiationUI:  # TODO: Rename to FamilyChatUI in future refactor
         self._non_final_tokens: list[dict] = []
 
         # Per-speaker language tracking (for detecting language changes)
-        self._speaker_languages: dict[int, str] = {}
+        self._speaker_last_language: dict[int, str] = {}
 
         # Status
         self._status_message = ""
@@ -188,35 +193,34 @@ class NegotiationUI:  # TODO: Rename to FamilyChatUI in future refactor
     
     def _input_thread_func(self) -> None:
         """Background thread to read terminal input."""
-        import time
         while self._running.is_set():
             try:
                 key = self._read_key()
                 if key:
                     self._key_queue.put(key)
                 else:
-                    time.sleep(0.05)  # Prevent busy-waiting
-            except Exception:
-                time.sleep(0.1)
-    
+                    time.sleep(KEY_POLL_INTERVAL)
+            except (OSError, termios.error):
+                time.sleep(MAIN_LOOP_INTERVAL)
+
     def _start_keyboard_listener(self) -> None:
         """Start terminal keyboard listener."""
         try:
             # Set terminal to raw mode (no echo, char-by-char input)
             self._old_term_settings = termios.tcgetattr(sys.stdin)
             tty.setcbreak(sys.stdin.fileno())
-            
+
             self._input_thread = threading.Thread(target=self._input_thread_func, daemon=True)
             self._input_thread.start()
-        except Exception:
+        except (OSError, termios.error):
             pass
-    
+
     def _stop_keyboard_listener(self) -> None:
         """Restore terminal settings."""
         if self._old_term_settings:
             try:
                 termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self._old_term_settings)
-            except Exception:
+            except (OSError, termios.error):
                 pass
     
     def _handle_key(self, key: str) -> None:
@@ -315,9 +319,9 @@ class NegotiationUI:  # TODO: Rename to FamilyChatUI in future refactor
 
             # Speaker changed - flush buffers, start new paragraph
             if speaker is not None and speaker != current_speaker:
-                # Flush pending content (clean internal tokens)
-                clean_orig = original_buffer.replace("<end>", "").replace("<END>", "")
-                clean_trans = translation_buffer.replace("<end>", "").replace("<END>", "")
+                # Flush pending content
+                clean_orig = self._clean_display_text(original_buffer)
+                clean_trans = self._clean_display_text(translation_buffer)
                 if clean_orig:
                     parts.append(clean_orig)
                     if clean_trans:
@@ -341,17 +345,17 @@ class NegotiationUI:  # TODO: Rename to FamilyChatUI in future refactor
             else:
                 # If we have pending translation, flush first
                 if translation_buffer:
-                    clean_orig = original_buffer.replace("<end>", "").replace("<END>", "")
-                    clean_trans = translation_buffer.replace("<end>", "").replace("<END>", "")
+                    clean_orig = self._clean_display_text(original_buffer)
+                    clean_trans = self._clean_display_text(translation_buffer)
                     parts.append(clean_orig)
                     parts.append(f" ({clean_trans.strip()})")
                     original_buffer = ""
                     translation_buffer = ""
                 original_buffer += text
 
-        # Final flush (clean internal tokens)
-        clean_orig = original_buffer.replace("<end>", "").replace("<END>", "")
-        clean_trans = translation_buffer.replace("<end>", "").replace("<END>", "")
+        # Final flush
+        clean_orig = self._clean_display_text(original_buffer)
+        clean_trans = self._clean_display_text(translation_buffer)
         if clean_orig:
             parts.append(clean_orig)
             if clean_trans:
@@ -380,35 +384,33 @@ class NegotiationUI:  # TODO: Rename to FamilyChatUI in future refactor
         }
         if language in TEXT_CODES:
             return TEXT_CODES[language]
-        from .languages import get_language_flag
         return get_language_flag(language)
 
     def _clean_display_text(self, text: str) -> str:
         """Remove internal tokens like <end> that shouldn't be displayed."""
         return text.replace("<end>", "").replace("<END>", "")
 
+    def _render_speaker_header(self, text: Text, speaker: int | str) -> None:
+        """Render speaker header with emoji and styled label."""
+        emoji, speaker_color = self._get_speaker_style(speaker)
+        profile = self.session.get_speaker_profile(speaker)
+        label = profile.get_label()
+        text.append(f"{emoji} {label}: ", style=f"bold {speaker_color}")
+
     def _render_transcript(self) -> Text:
         """Render transcript with inline parenthetical translations and language colors.
 
-        Language flags are shown only when needed for clarity:
-        - When a speaker starts speaking (to identify their language)
-        - When a speaker switches language mid-speech
-
-        Flags appear at the END of the original text (before translation) to allow
-        time for language detection.
+        Language flags are shown when:
+        - A speaker starts speaking (to identify their language)
+        - A speaker switches language mid-speech
         """
         text = Text()
         current_speaker: Optional[int | str] = None
-
-        # Buffers for accumulating original + translation pairs
         original_buffer = ""
         translation_buffer = ""
         current_lang: Optional[str] = None
         buffer_is_final = True
-
-        # Track whether the current buffer needs a flag when flushed
-        # (set True on speaker change or language change)
-        needs_flag = False
+        should_show_flag = False
 
         all_tokens = self.session.final_tokens + self._non_final_tokens
 
@@ -424,34 +426,29 @@ class NegotiationUI:  # TODO: Rename to FamilyChatUI in future refactor
             if is_translation and source_lang == self.session.target_language:
                 continue
 
-            # Speaker changed - flush buffers, start new paragraph
+            # Handle speaker change
             if speaker is not None and speaker != current_speaker:
-                # Flush any pending content (with flag if needed)
+                # Flush pending content
                 if original_buffer or translation_buffer:
                     self._flush_buffers_with_flag(
                         text, original_buffer, translation_buffer,
-                        current_lang, buffer_is_final, show_flag=needs_flag
+                        current_lang, buffer_is_final, show_flag=should_show_flag
                     )
                 original_buffer = ""
                 translation_buffer = ""
                 buffer_is_final = True
 
+                # Add paragraph break and speaker header
                 if current_speaker is not None:
                     text.append("\n\n")
                 current_speaker = speaker
+                self._render_speaker_header(text, speaker)
 
-                # Speaker header with emoji and unique color
-                emoji, speaker_color = self._get_speaker_style(speaker)
-                profile = self.session.get_speaker_profile(speaker)
-                label = profile.get_label()
-                text.append(f"{emoji} {label}: ", style=f"bold {speaker_color}")
-
-                # New speaker always needs a flag on their first phrase
-                needs_flag = True
+                should_show_flag = True
                 current_lang = language
                 token_text = token_text.lstrip()
 
-            # Track if buffer contains non-final content
+            # Track finality
             if not is_final:
                 buffer_is_final = False
 
@@ -459,9 +456,8 @@ class NegotiationUI:  # TODO: Rename to FamilyChatUI in future refactor
             if is_translation:
                 translation_buffer += token_text
             else:
-                # Language changed for this speaker - flush with flag, mark next for flag too
+                # Handle language change
                 if language and current_lang and language != current_lang:
-                    # Flush previous phrase WITH flag (language just changed)
                     self._flush_buffers_with_flag(
                         text, original_buffer, translation_buffer,
                         current_lang, buffer_is_final, show_flag=True
@@ -469,26 +465,25 @@ class NegotiationUI:  # TODO: Rename to FamilyChatUI in future refactor
                     original_buffer = ""
                     translation_buffer = ""
                     buffer_is_final = is_final
-                    # Next phrase also needs flag (it's in the new language)
-                    needs_flag = True
-                # If we have pending translation, flush (phrase complete)
+                    should_show_flag = True
+                # Flush completed phrase (has translation)
                 elif translation_buffer:
                     self._flush_buffers_with_flag(
                         text, original_buffer, translation_buffer,
-                        current_lang, buffer_is_final, show_flag=needs_flag
+                        current_lang, buffer_is_final, show_flag=should_show_flag
                     )
                     original_buffer = ""
                     translation_buffer = ""
                     buffer_is_final = is_final
-                    # Flag was shown (if needed), reset
-                    needs_flag = False
+                    should_show_flag = False
+
                 original_buffer += token_text
                 current_lang = language
 
         # Final flush
         self._flush_buffers_with_flag(
             text, original_buffer, translation_buffer,
-            current_lang, buffer_is_final, show_flag=needs_flag
+            current_lang, buffer_is_final, show_flag=should_show_flag
         )
         return text
 
@@ -657,8 +652,7 @@ class NegotiationUI:  # TODO: Rename to FamilyChatUI in future refactor
         self._start_keyboard_listener()
         
         try:
-            import time
-            with Live(self._build_display(), console=self.console, refresh_per_second=4, vertical_overflow="crop") as live:
+            with Live(self._build_display(), console=self.console, refresh_per_second=UI_REFRESH_RATE, vertical_overflow="crop") as live:
                 while self._running.is_set() and self.transcriber.is_running:
                     # Process keypresses
                     try:
@@ -667,13 +661,13 @@ class NegotiationUI:  # TODO: Rename to FamilyChatUI in future refactor
                             self._handle_key(key)
                     except Empty:
                         pass
-                    
+
                     # Update scroll content
                     if self._scroll_mode:
                         self._prepare_scroll_content()
-                    
+
                     live.update(self._build_display())
-                    time.sleep(0.1)  # Control update rate
+                    time.sleep(MAIN_LOOP_INTERVAL)
                     
         except KeyboardInterrupt:
             pass
