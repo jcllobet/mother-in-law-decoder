@@ -1,14 +1,10 @@
 # Mother-in-Law Decoder
 
-Real-time transcription and translation for multilingual family conversations. Know what everyone in your wife's family is saying. This does not currently decode subtle hints and other common in-laws language tactics.
+Real-time transcription and translation for multilingual family conversations. 
 
-## The Problem
+Does your wife speak another language that you don't understand? Have you ever wondered what they're saying in the family dinner without wanting to stop the flow of conversation?
 
-Your in-laws speak a language you don't. You catch your name in the middle of a confusing sentence, and hope they don't think you're an idiot.
-
-## The Solution
-
-Pull up the computer during the the conversation. Get live transcription and translation to the language of your choice in your terminal (English by default). You can also label the speakers later on.
+Note: _This does not currently decode subtle hints and other common in-laws language tactics._
 
 ## Quick Start
 
@@ -52,7 +48,7 @@ By default, the app auto-selects your MacBook's built-in microphone. To use a di
    python main.py --session "xmas dinner" --device 1
    ```
 
-### No Audio? Debug It
+### How debug audio issues:
 
 If transcription shows "Waiting for speech..." but you're talking:
 
@@ -67,7 +63,7 @@ This tests your microphone directly and shows a live audio level meter. Common f
 
 ## Output
 
-Transcripts save to `output/<session>/` as JSON, TXT, and MP3. Resume anytime with the same session name.
+Transcripts save to `output/<session>/` as JSON, TXT, and MP3. Resume anytime with the same session name or change it for a new session.
 
 ## Requirements
 
