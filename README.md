@@ -25,17 +25,45 @@ python live-transcription.py --session "xmas dinner"
 ## Usage
 
 ```bash
-# List audio devices
-python live-transcription.py --list-devices
-
-# Use specific microphone
-python live-transcription.py --session "xmas dinner" --device 2
-
 # Add context for better accuracy
-python live-transcription.py --session "xmas dinner" --context "Family discussing vacation plans"
+python main.py --session "xmas dinner" --context "Family discussing vacation plans"
 ```
 
 **Controls:** `v` to scroll history, `q` to quit and save.
+
+## Selecting a Microphone
+
+By default, the app auto-selects your MacBook's built-in microphone. To use a different device:
+
+1. **List available devices:**
+   ```bash
+   python main.py --list-devices
+   ```
+   Output:
+   ```
+   Available audio input devices:
+     [0] MacBook Pro Microphone (default)
+     [1] USB Audio Device
+     [2] AirPods Pro
+   ```
+
+2. **Run with your chosen device:**
+   ```bash
+   python main.py --session "xmas dinner" --device 1
+   ```
+
+### No Audio? Debug It
+
+If transcription shows "Waiting for speech..." but you're talking:
+
+```bash
+python debug_mic.py
+```
+
+This tests your microphone directly and shows a live audio level meter. Common fixes:
+- **Permission denied:** System Settings → Privacy & Security → Microphone
+- **Wrong device:** Try a different `--device` index
+- **Muted mic:** Check system audio settings
 
 ## Output
 

@@ -17,7 +17,7 @@ except ImportError:
 from live_transcriber import (
     Session,
     Transcriber,
-    NegotiationUI,
+    LiveTranscriptUI,
     list_audio_devices,
 )
 
@@ -170,8 +170,8 @@ Scroll mode navigation:
         device_index=args.device,
     )
 
-    # Run full UI
-    ui = NegotiationUI(
+    # Run UI
+    ui = LiveTranscriptUI(
         session=session,
         transcriber=transcriber,
     )

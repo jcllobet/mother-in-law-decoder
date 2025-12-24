@@ -14,6 +14,8 @@ import pyaudio  # type: ignore
 from .session import Session, resolve_language
 
 SONIOX_WEBSOCKET_URL = "wss://stt-rt.soniox.com/transcribe-websocket"
+SONIOX_MODEL = "stt-rt-v3"
+AUDIO_FORMAT = "pcm_s16le"
 
 # Audio settings
 SAMPLE_RATE = 16000
@@ -37,8 +39,8 @@ def get_soniox_config(
     """
     config = {
         "api_key": api_key,
-        "model": "stt-rt-v3",
-        "audio_format": "pcm_s16le",
+        "model": SONIOX_MODEL,
+        "audio_format": AUDIO_FORMAT,
         "sample_rate": SAMPLE_RATE,
         "num_channels": NUM_CHANNELS,
         "language_hints": source_languages,
@@ -95,9 +97,9 @@ class Transcriber:
         self.device_index = device_index
         
         self._running = threading.Event()
-        self._audio: Optional[pyaudio.PyAudio] = None
+        self._pyaudio: Optional[pyaudio.PyAudio] = None
         self._stream: Optional[pyaudio.Stream] = None
-        self._ws = None
+        self._websocket = None
         self._mic_thread: Optional[threading.Thread] = None
         self._recv_thread: Optional[threading.Thread] = None
         self._device_name: Optional[str] = None
@@ -110,76 +112,81 @@ class Transcriber:
     def device_name(self) -> Optional[str]:
         return self._device_name
     
+    def _get_input_devices(self) -> list[tuple[int, dict]]:
+        """Get all available input devices."""
+        devices = []
+        for i in range(self._pyaudio.get_device_count()):
+            info = self._pyaudio.get_device_info_by_index(i)
+            if info.get("maxInputChannels", 0) > 0:
+                devices.append((i, info))
+        return devices
+
+    def _select_device(self, idx: int, info: dict) -> int:
+        """Select a device and set its name."""
+        self._device_name = str(info.get("name", "Unknown"))
+        return idx
+
     def _find_microphone(self) -> Optional[int]:
         """Find input device - uses specified device_index, or prefers MacBook mic."""
-        self._audio = pyaudio.PyAudio()
-        
+        self._pyaudio = pyaudio.PyAudio()
+
         # If a specific device was requested, use it
         if self.device_index is not None:
             try:
-                info = self._audio.get_device_info_by_index(self.device_index)
+                info = self._pyaudio.get_device_info_by_index(self.device_index)
                 if info.get("maxInputChannels", 0) > 0:
-                    self._device_name = str(info.get("name", "Unknown"))
-                    return self.device_index
-            except Exception:
+                    return self._select_device(self.device_index, info)
+            except OSError:
                 pass
             return None
-        
-        # Collect all input devices
-        input_devices: list[tuple[int, dict]] = []
-        for i in range(self._audio.get_device_count()):
-            info = self._audio.get_device_info_by_index(i)
-            if info.get("maxInputChannels", 0) > 0:
-                input_devices.append((i, info))
-        
+
+        # Get all input devices
+        input_devices = self._get_input_devices()
         if not input_devices:
             return None
-        
-        # Prefer MacBook's built-in microphone (more reliable than Bluetooth/virtual)
+
+        # Prefer MacBook's built-in microphone
         for idx, info in input_devices:
             name = str(info.get("name", "")).lower()
             if "macbook" in name and "microphone" in name:
-                self._device_name = str(info.get("name", "Unknown"))
-                return idx
-        
+                return self._select_device(idx, info)
+
         # Fall back to system default
         try:
-            default_info = self._audio.get_default_input_device_info()
+            default_info = self._pyaudio.get_default_input_device_info()
             default_name = default_info.get("name")
             for idx, info in input_devices:
                 if info.get("name") == default_name:
-                    self._device_name = str(info.get("name", "Unknown"))
-                    return idx
-        except Exception:
+                    return self._select_device(idx, info)
+        except OSError:
             pass
-        
-        # Last resort: first available input device
+
+        # Last resort: first available
         idx, info = input_devices[0]
-        self._device_name = str(info.get("name", "Unknown"))
-        return idx
+        return self._select_device(idx, info)
     
     def _stream_microphone(self) -> None:
         """Capture audio from microphone and send to websocket."""
         try:
-            while self._running.is_set() and self._stream and self._ws:
+            while self._running.is_set() and self._stream and self._websocket:
                 data = self._stream.read(CHUNK_SIZE, exception_on_overflow=False)
                 self.session.add_audio_frame(data)
-                self._ws.send(data)
-        except Exception:
+                self._websocket.send(data)
+        except (OSError, ConnectionError):
             pass
-        
+
         # Signal end-of-audio
         try:
-            if self._ws:
-                self._ws.send("")
-        except Exception:
+            if self._websocket:
+                self._websocket.send("")
+        except (OSError, ConnectionError):
             pass
     
     def _receive_messages(self) -> None:
         """Receive and process messages from websocket."""
         try:
-            while self._running.is_set() and self._ws:
-                message = self._ws.recv()
+            while self._running.is_set() and self._websocket:
+                message = self._websocket.recv()
                 res = json.loads(message)
                 
                 # Error from server
@@ -221,13 +228,13 @@ class Transcriber:
         """Start transcription. Returns True if started successfully."""
         device_idx = self._find_microphone()
         
-        if device_idx is None or self._audio is None:
+        if device_idx is None or self._pyaudio is None:
             if self.on_error:
                 self.on_error("No microphone found")
             return False
         
         # Open audio stream
-        self._stream = self._audio.open(
+        self._stream = self._pyaudio.open(
             format=pyaudio.paInt16,
             channels=NUM_CHANNELS,
             rate=SAMPLE_RATE,
@@ -246,8 +253,8 @@ class Transcriber:
                 self.target_language,
                 self.context
             )
-            self._ws = connect(SONIOX_WEBSOCKET_URL)
-            self._ws.send(json.dumps(config))
+            self._websocket = connect(SONIOX_WEBSOCKET_URL)
+            self._websocket.send(json.dumps(config))
             
             if self.on_connected:
                 self.on_connected()
@@ -277,28 +284,28 @@ class Transcriber:
     def stop(self) -> None:
         """Stop transcription and clean up resources."""
         self._running.clear()
-        
-        if self._ws:
+
+        if self._websocket:
             try:
-                self._ws.close()
-            except Exception:
+                self._websocket.close()
+            except (OSError, ConnectionError):
                 pass
-            self._ws = None
-        
+            self._websocket = None
+
         if self._stream:
             try:
                 self._stream.stop_stream()
                 self._stream.close()
-            except Exception:
+            except OSError:
                 pass
             self._stream = None
-        
-        if self._audio:
+
+        if self._pyaudio:
             try:
-                self._audio.terminate()
-            except Exception:
+                self._pyaudio.terminate()
+            except OSError:
                 pass
-            self._audio = None
+            self._pyaudio = None
     
     def wait(self) -> None:
         """Wait for transcription to complete."""

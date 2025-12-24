@@ -8,7 +8,7 @@ SONIOX_LANGUAGES = {
     "eu": {"name": "Basque", "flag": "🪨"},
     "bs": {"name": "Bosnian", "flag": "🇧🇦"},
     "bg": {"name": "Bulgarian", "flag": "🇧🇬"},
-    "ca": {"name": "Catalan", "flag": "🌆"},
+    "ca": {"name": "Catalan", "flag": "🐈"},
     "zh": {"name": "Chinese", "flag": "🇨🇳"},
     "hr": {"name": "Croatian", "flag": "🇭🇷"},
     "cs": {"name": "Czech", "flag": "🇨🇿"},

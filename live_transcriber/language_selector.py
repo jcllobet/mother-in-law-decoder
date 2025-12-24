@@ -24,7 +24,7 @@ class LanguageSelector:
         self.result: Optional[list[str]] = None
         self.cancelled = False
 
-    def get_display_text(self):
+    def get_display_text(self) -> list[tuple[str, str]]:
         """Generate the display text for the selector UI."""
         lines = [("class:title", f"{self.title}\n\n")]
         lines.append(("class:dim", "Search: "))
